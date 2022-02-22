@@ -7,8 +7,9 @@ import awaitjs from '@awaitjs/express';
 import apicache from 'apicache'
 import crypto from 'crypto';
 import compression from "compression";
-import keccak256 from "keccak256";
 import {MerkleTree} from "merkletreejs";
+import {solidityKeccak256} from "ethers/lib/utils.js";
+import keccak256 from "keccak256";
 
 env.config();
 
@@ -59,8 +60,30 @@ app.use(function (request, response, next) {
     next();
 });
 
-app.getAsync('/signature/:address', cache('24 hours', onlyStatus200), async function (request, response, next) {
+app.getAsync('/:address/amount', cache('24 hours', onlyStatus200), async function (request, response, next) {
     const address = request.params['address'];
+    let amount = 0;
+
+    const merkleTreeFiles = process.env.MERKLETREE_FILES.split(' ');
+
+    for (const merkleTreeFile of merkleTreeFiles) {
+        const data = filesystem.readFileSync('merkletrees/' + merkleTreeFile);
+        const json = JSON.parse(data.toString());
+
+        for (const allowlist of json) {
+            if (allowlist.address === address && allowlist.amount > amount) {
+                amount = allowlist.amount;
+            }
+        }
+    }
+
+    response.send(amount.toString());
+});
+
+app.getAsync('/signature/:address/:amount', cache('24 hours', onlyStatus200), async function (request, response, next) {
+    const address = request.params['address'];
+    const amount = request.params['amount'];
+
     const merkleTreeFiles = process.env.MERKLETREE_FILES.split(' ');
     const merkleTrees = [];
 
@@ -68,14 +91,26 @@ app.getAsync('/signature/:address', cache('24 hours', onlyStatus200), async func
         const data = filesystem.readFileSync('merkletrees/' + merkleTreeFile);
         const json = JSON.parse(data.toString());
 
-        const leafNodes = json.map(address => keccak256(address));
+        const leafNodes = json.map(function (allowlist) {
+            return Buffer.from(
+                // Hash in appropriate Merkle format
+                solidityKeccak256(["address", "uint256"], [allowlist.address, allowlist.amount]).slice(2),
+                "hex"
+            );
+        });
+
         const merkleTree = new MerkleTree(leafNodes, keccak256, { sortPairs: true });
 
         merkleTrees.push(merkleTree);
     }
 
     for (const merkleTree of merkleTrees) {
-        const leaf = keccak256(address);
+        const leaf = Buffer.from(
+            // Hash in appropriate Merkle format
+            solidityKeccak256(["address", "uint256"], [address, amount]).slice(2),
+            "hex"
+        );
+
         const hexProof = merkleTree.getHexProof(leaf);
 
         if (hexProof.length !== 0) {
