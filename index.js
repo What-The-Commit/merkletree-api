@@ -109,19 +109,24 @@ app.getAsync('/signature/:address/:amount', cache('24 hours', onlyStatus200), as
         merkleTrees.push(merkleTree);
     }
 
-    for (const merkleTree of merkleTrees) {
-        const leaf = Buffer.from(
-            // Hash in appropriate Merkle format
-            solidityKeccak256(["address", "uint256"], [address, amount]).slice(2),
-            "hex"
-        );
+    try {
+        for (const merkleTree of merkleTrees) {
+            const leaf = Buffer.from(
+                // Hash in appropriate Merkle format
+                solidityKeccak256(["address", "uint256"], [address, amount]).slice(2),
+                "hex"
+            );
 
-        const hexProof = merkleTree.getHexProof(leaf);
+            const hexProof = merkleTree.getHexProof(leaf);
 
-        if (hexProof.length !== 0) {
-            response.send(hexProof);
-            break;
+            if (hexProof.length !== 0) {
+                response.send(hexProof);
+                break;
+            }
         }
+    } catch (e) {
+        response.status(400);
+        response.send(e);
     }
 
     response.status(404);
