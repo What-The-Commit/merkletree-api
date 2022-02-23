@@ -10,6 +10,7 @@ import compression from "compression";
 import {MerkleTree} from "merkletreejs";
 import {solidityKeccak256} from "ethers/lib/utils.js";
 import keccak256 from "keccak256";
+import cors from "cors";
 
 env.config();
 
@@ -19,6 +20,10 @@ const certificate = filesystem.readFileSync(process.env.SSL_CERT);
 const credentials = {key: privateKey, cert: certificate};
 
 const app = awaitjs.addAsync(express());
+
+app.use(cors({
+    origin: '*'
+}));
 
 apicache.options({
     headerBlacklist:  ['access-control-allow-origin'],
