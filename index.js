@@ -89,6 +89,12 @@ app.getAsync('/signature/:address/:amount', cache('24 hours', onlyStatus200), as
     const address = request.params['address'];
     const amount = request.params['amount'];
 
+    if (parseInt(amount) === 0) {
+        response.status(400);
+        response.send('No allocation in allowlist');
+        return;
+    }
+
     const merkleTreeFiles = process.env.MERKLETREE_FILES.split(' ');
     const merkleTrees = [];
 
