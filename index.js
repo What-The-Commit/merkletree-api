@@ -11,6 +11,7 @@ import {MerkleTree} from "merkletreejs";
 import {solidityKeccak256} from "ethers/lib/utils.js";
 import keccak256 from "keccak256";
 import cors from "cors";
+import {ethers} from "ethers";
 
 env.config();
 
@@ -76,7 +77,7 @@ app.getAsync('/:address/amount', cache('24 hours', onlyStatus200), async functio
         const json = JSON.parse(data.toString());
 
         for (const allowlist of json) {
-            if (allowlist.address === address && allowlist.amount > amount) {
+            if (ethers.utils.getAddress(allowlist.address) === ethers.utils.getAddress(address) && allowlist.amount > amount) {
                 amount = allowlist.amount;
             }
         }
@@ -86,7 +87,7 @@ app.getAsync('/:address/amount', cache('24 hours', onlyStatus200), async functio
 });
 
 app.getAsync('/signature/:address/:amount', cache('24 hours', onlyStatus200), async function (request, response, next) {
-    const address = request.params['address'];
+    const address = ethers.utils.getAddress(request.params['address']);
     const amount = request.params['amount'];
 
     if (parseInt(amount) === 0) {
@@ -105,7 +106,7 @@ app.getAsync('/signature/:address/:amount', cache('24 hours', onlyStatus200), as
         const leafNodes = json.map(function (allowlist) {
             return Buffer.from(
                 // Hash in appropriate Merkle format
-                solidityKeccak256(["address", "uint256"], [allowlist.address, allowlist.amount]).slice(2),
+                solidityKeccak256(["address", "uint256"], [ethers.utils.getAddress(allowlist.address), allowlist.amount]).slice(2),
                 "hex"
             );
         });
