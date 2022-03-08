@@ -22,8 +22,13 @@ const credentials = {key: privateKey, cert: certificate};
 
 const app = awaitjs.addAsync(express());
 
+let corsWhitelist = process.env.CORS_ORIGINS.split(' ');
+
+corsWhitelist.push('https://localhost:' + process.env.HTTPS_PORT);
+corsWhitelist.push('https://127.0.0.1:' + process.env.HTTPS_PORT);
+
 app.use(cors({
-    origin: '*'
+    origin: corsWhitelist
 }));
 
 apicache.options({
