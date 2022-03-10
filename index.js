@@ -82,8 +82,12 @@ app.getAsync('/:address/amount', cache('24 hours', onlyStatus200), async functio
         const json = JSON.parse(data.toString());
 
         for (const allowlist of json) {
-            if (ethers.utils.getAddress(allowlist.address) === ethers.utils.getAddress(address) && allowlist.amount > amount) {
-                amount = allowlist.amount;
+            try {
+                if (ethers.utils.getAddress(allowlist.address) === ethers.utils.getAddress(address) && allowlist.amount > amount) {
+                    amount = allowlist.amount;
+                }
+            } catch (error) {
+                // ignore invalid address
             }
         }
     }
@@ -108,13 +112,19 @@ app.getAsync('/signature/:address/:amount', cache('24 hours', onlyStatus200), as
         const data = filesystem.readFileSync('merkletrees/' + merkleTreeFile);
         const json = JSON.parse(data.toString());
 
-        const leafNodes = json.map(function (allowlist) {
-            return Buffer.from(
-                // Hash in appropriate Merkle format
-                solidityKeccak256(["address", "uint256"], [ethers.utils.getAddress(allowlist.address), allowlist.amount]).slice(2),
-                "hex"
-            );
-        });
+        const leafNodes = [];
+
+        for (const allowlist of json) {
+            try {
+                leafNodes.push(Buffer.from(
+                    // Hash in appropriate Merkle format
+                    solidityKeccak256(["address", "uint256"], [ethers.utils.getAddress(allowlist.address), allowlist.amount]).slice(2),
+                    "hex"
+                ));
+            } catch (error) {
+                // ignore invalid address
+            }
+        }
 
         const merkleTree = new MerkleTree(leafNodes, keccak256, { sortPairs: true });
 
