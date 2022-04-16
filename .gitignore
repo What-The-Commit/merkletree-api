@@ -4,3 +4,4 @@ package-lock.json
 merkletrees/*
 !merkletrees/.gitkeep
 .env
+merkletree-api.service
